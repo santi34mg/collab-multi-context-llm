@@ -1,0 +1,8 @@
+# Source - https://stackoverflow.com/a/69269142
+# Posted by Aincvy, modified by community. See post 'Timeline' for change history
+# Retrieved 2026-10-26, License - CC BY-SA 4.0
+
+CompileFlags: # Tweak the parse settings, example directory given to show format
+  Add:
+    # e.g `-I/usr/include/SDL2`  suggested from @Palmkeep
+    - "--include-directory=/home/santisil/Programming/agent-collab/vendor/llama.cpp/include"
