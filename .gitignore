@@ -1,0 +1,6 @@
+/target/
+/memory.json
+/checkpoint.json
+/trace.json
+/student.json
+/data/
