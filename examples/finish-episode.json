@@ -1,0 +1,10 @@
+{
+  "scope": "hello",
+  "working": [["Finish this task with result A."], ["Finish this task with result B."]],
+  "rounds": [
+    [
+      {"stream": 0, "operation": {"op": "finish", "result": "A"}},
+      {"stream": 1, "operation": {"op": "finish", "result": "B"}}
+    ]
+  ]
+}

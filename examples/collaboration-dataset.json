@@ -1,0 +1,25 @@
+[
+  {
+    "scope": "arithmetic",
+    "working": [["Private clue: a = 17"], ["Private clue: b = 25; hypothesis total = 40"]],
+    "rounds": [
+      [
+        {"stream": 0, "operation": {"op": "publish", "target": null, "content": "a = 17"}},
+        {"stream": 1, "operation": {"op": "publish", "target": null, "content": "b = 25"}}
+      ],
+      [
+        {"stream": 0, "operation": {"op": "propose_edit", "target": 1, "entry_id": 2, "expected_version": 1, "replacement": "Verified total: 17 + 25 = 42"}}
+      ],
+      [
+        {"stream": 1, "operation": {"op": "accept_edit", "proposal_id": 1}}
+      ],
+      [
+        {"stream": 0, "operation": {"op": "memory_propose", "content": "17 + 25 = 42", "kind": "fact", "source_references": ["synthetic arithmetic fixture"]}}
+      ],
+      [
+        {"stream": 0, "operation": {"op": "finish", "result": "42"}},
+        {"stream": 1, "operation": {"op": "finish", "result": "42"}}
+      ]
+    ]
+  }
+]
