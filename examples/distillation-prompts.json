@@ -1,0 +1,25 @@
+[
+  {
+    "id": "arithmetic-2-plus-2",
+    "messages": [
+      {"role": "system", "content": "Answer accurately and concisely. Follow the requested output format."},
+      {"role": "user", "content": "What is 2 + 2? Reply with only the digit."}
+    ],
+    "expected_answer": "4"
+  },
+  {
+    "id": "arithmetic-17-plus-25",
+    "messages": [
+      {"role": "system", "content": "Answer accurately and concisely. Follow the requested output format."},
+      {"role": "user", "content": "What is 17 + 25? Reply with only the number."}
+    ],
+    "expected_answer": "42"
+  },
+  {
+    "id": "memory-vs-weights",
+    "messages": [
+      {"role": "system", "content": "Answer accurately in one short sentence, at most 25 words."},
+      {"role": "user", "content": "How does a language model's retrieved memory differ from its trained weights?"}
+    ]
+  }
+]
