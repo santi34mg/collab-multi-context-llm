@@ -45,7 +45,7 @@ struct Builder<'a> {
     config: &'a ModelConfig,
     budget: &'a ContextBudget,
     tokens: Vec<InputToken>,
-    readers: Vec<Vec<StreamId>>,
+    readers: Vec<StreamId>,
     positions: BTreeMap<(StreamId, StreamId, usize), usize>,
 }
 
@@ -55,17 +55,14 @@ impl Builder<'_> {
         bytes: &[u8],
         owner: usize,
         kind: usize,
-        readers: Vec<usize>,
+        reader: StreamId,
         bos: bool,
     ) -> Result<usize, String> {
         let size = bytes
             .len()
             .checked_add(usize::from(bos))
             .ok_or("context size overflow")?;
-        if readers.len() != 1 {
-            return Err("reference blocks require exactly one reader".into());
-        }
-        let key = (readers[0], owner, kind);
+        let key = (reader, owner, kind);
         let offset = self.positions.get(&key).copied().unwrap_or(0);
         if size > self.config.max_positions.saturating_sub(offset) {
             return Err(format!(
@@ -92,7 +89,7 @@ impl Builder<'_> {
                 stream: owner,
                 kind,
             });
-            self.readers.push(readers.clone());
+            self.readers.push(reader);
         }
         self.positions.insert(key, offset + size);
         Ok(start)
@@ -139,13 +136,7 @@ pub fn encode(
                 "entry {} v{}: {}",
                 entry.id, version.version, version.content
             );
-            builder.block(
-                text.as_bytes(),
-                stream.id(),
-                WORKING,
-                vec![stream.id()],
-                false,
-            )?;
+            builder.block(text.as_bytes(), stream.id(), WORKING, stream.id(), false)?;
         }
         for proposal in engine
             .proposals()
@@ -153,21 +144,15 @@ pub fn encode(
             .filter(|p| p.target == stream.id() && p.status == ProposalStatus::Pending)
         {
             let text = serde_json::to_vec(proposal).map_err(|e| e.to_string())?;
-            builder.block(&text, stream.id(), INBOX, vec![stream.id()], false)?;
+            builder.block(&text, stream.id(), INBOX, stream.id(), false)?;
         }
         for notice in stream.notices() {
-            builder.block(
-                notice.as_bytes(),
-                stream.id(),
-                INBOX,
-                vec![stream.id()],
-                false,
-            )?;
+            builder.block(notice.as_bytes(), stream.id(), INBOX, stream.id(), false)?;
         }
         if budget.read_memory {
             for memory in stream.retrieved() {
                 let text = serde_json::to_vec(memory).map_err(|e| e.to_string())?;
-                builder.block(&text, neutral, MEMORY, vec![stream.id()], false)?;
+                builder.block(&text, neutral, MEMORY, stream.id(), false)?;
             }
         }
         let history = stream.history();
@@ -179,7 +164,7 @@ pub fn encode(
             &history[history.len() - retained..],
             stream.id(),
             HISTORY,
-            vec![stream.id()],
+            stream.id(),
             true,
         )?;
         queries.push(start + retained);
@@ -208,7 +193,7 @@ pub fn encode(
                     publication.content.as_bytes(),
                     publication.author,
                     SHARED,
-                    vec![reader],
+                    reader,
                     false,
                 )?;
             }
@@ -222,8 +207,8 @@ pub fn encode(
         values[row] = true;
     }
     for (&query, &stream) in queries.iter().zip(&streams) {
-        for (key, readers) in builder.readers.iter().enumerate() {
-            visible[query][key] = readers.contains(&stream);
+        for (key, &reader) in builder.readers.iter().enumerate() {
+            visible[query][key] = reader == stream;
         }
     }
     Ok(EncodedSnapshot {
