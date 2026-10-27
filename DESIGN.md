@@ -1,6 +1,7 @@
 # Collaborative Multi-Context Language Model
 
-**Status:** Research proposal with an executable Rust reference prototype; see [README.md](README.md) for implemented scope and limitations.  
+**Status:** Research proposal with an executable Rust reference prototype; see the [implementation reference](docs/IMPLEMENTATION.md#implemented-scope-and-limitations) for implemented scope and limitations.
+
 **Working name:** Collaborative Multi-Context Model (CMCM)
 
 **Teacher bootstrapping:** Local Qwen3.5 and LFM2.5 GGUF inference, final-answer dataset collection, and student distillation are implemented; see [the inference guide](docs/INFERENCE.md). These frozen pretrained teachers remain separate from the experimental multi-context architecture. Outcome-based RL is not implemented.
