@@ -176,14 +176,28 @@ impl MemoryStore {
         max_entries: usize,
         max_bytes: usize,
     ) -> Vec<MemoryEntry> {
-        let query_words = words(query);
+        let query_words: Vec<_> = words(query).into_iter().collect();
         if query_words.is_empty() || max_entries == 0 || max_bytes == 0 {
             return Vec::new();
         }
+        // Track distinct matches by entry ID instead of building an owned word
+        // set for every entry. Normalize the entire string before splitting to
+        // preserve Unicode lowercasing and word-boundary semantics.
+        let mut matched = vec![None; query_words.len()];
         let mut ranked: Vec<_> = self
             .active_entries(scope)
             .filter_map(|entry| {
-                let score = words(&entry.content).intersection(&query_words).count();
+                let normalized = entry.content.to_lowercase();
+                let mut score = 0;
+                for word in normalized.split(|character: char| !character.is_alphanumeric()) {
+                    if let Ok(index) =
+                        query_words.binary_search_by(|query| query.as_str().cmp(word))
+                        && matched[index] != Some(entry.id)
+                    {
+                        matched[index] = Some(entry.id);
+                        score += 1;
+                    }
+                }
                 (score > 0).then_some((score, entry))
             })
             .collect();
@@ -484,6 +498,66 @@ mod tests {
 
     fn ids(entries: Vec<MemoryEntry>) -> Vec<u64> {
         entries.into_iter().map(|entry| entry.id).collect()
+    }
+
+    #[test]
+    fn retrieval_matches_owned_set_reference_for_unicode_and_budgets() {
+        let mut store = MemoryStore::new(8192);
+        for content in [
+            "Alpha ALPHA beta",
+            "Café 東京",
+            "ΟΣ ος ΟΣΑ",
+            "İ I i",
+            "unmatched",
+            "beta",
+        ] {
+            store.commit(draft(content, "scope")).unwrap();
+            store.commit(draft(content, "other")).unwrap();
+        }
+        store
+            .revise(1, 1, draft("beta beta Café", "scope"))
+            .unwrap();
+        store.retract(3, 1).unwrap();
+        store.forget(5).unwrap();
+        for query in [
+            "",
+            "!!!",
+            "ALPHA beta beta",
+            "café 東京",
+            "ΟΣ ΟΣΑ",
+            "İ i",
+            "unmatched",
+        ] {
+            for limit in [0, 1, 3, 20] {
+                for budget in [0, 4, 16, 8192] {
+                    let query_words = words(query);
+                    let mut ranked: Vec<_> = store
+                        .active_entries("scope")
+                        .filter_map(|entry| {
+                            let score = words(&entry.content).intersection(&query_words).count();
+                            (score > 0).then_some((score, entry))
+                        })
+                        .collect();
+                    ranked.sort_unstable_by(|(a_score, a), (b_score, b)| {
+                        b_score.cmp(a_score).then_with(|| a.id.cmp(&b.id))
+                    });
+                    let mut remaining = budget;
+                    let mut expected = Vec::new();
+                    if limit > 0 && budget > 0 {
+                        for (_, entry) in ranked {
+                            if entry.content.len() <= remaining {
+                                remaining -= entry.content.len();
+                                expected.push(entry.clone());
+                                if expected.len() == limit {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    assert_eq!(store.query("scope", query, limit, budget), expected);
+                }
+            }
+        }
     }
 
     #[test]
