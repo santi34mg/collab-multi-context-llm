@@ -149,6 +149,19 @@ The store writes an exclusive same-directory temporary file, syncs it, and renam
 
 `revise`, `retract`, and `forget` are available through the memory library. `forget` removes all retained versions from this store, but cannot erase traces, other process copies, snapshots, or backups. No secure storage erasure is provided. Scope checks and provenance validation are mechanical controls, **not factual verification or a complete defense against prompt injection**.
 
+## Performance benchmarks
+
+See the [performance audit and reproduction guide](docs/performance/REPORT.md) for measured results, methodology, limitations, and remaining opportunities. Benchmark collection and reporting use compiled Rust utilities. Generated samples, allocation profiles, and other results stay local in the ignored `docs/performance/data/` directory.
+
+```text
+cargo bench --bench performance
+cargo run --release --example performance_results -- build optimized
+cargo run --release --example performance_results -- run target/performance/optimized-bench local-run 0
+cargo run --release --example performance_results -- describe docs/performance/data/local-run.json
+```
+
+The Criterion suite covers context encoding, prediction, SGD, complete in-memory training episodes, distillation, memory retrieval, cache-eviction stress, stream counts, and independent-request concurrency. It does not benchmark external GGUF teachers or establish general model capability.
+
 ## Validation
 
 ```sh
