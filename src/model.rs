@@ -205,9 +205,14 @@ fn linear(x: &[f32], weights: &[f32], bias: Option<&[f32]>, output: &mut [f32]) 
 fn linear_backward(x: &[f32], weights: &[f32], dy: &[f32], dx: &mut [f32], dw: &mut [f32]) {
     let cols = dy.len();
     for (i, (&value, input_gradient)) in x.iter().zip(dx.iter_mut()).enumerate() {
-        for (j, &output_gradient) in dy.iter().enumerate() {
-            *input_gradient += weights[i * cols + j] * output_gradient;
-            dw[i * cols + j] += value * output_gradient;
+        let row = i * cols..(i + 1) * cols;
+        // Keep the reduction's addition order, but separate it from independent
+        // weight updates so LLVM can vectorize those without reassociating floats.
+        for (&weight, &output_gradient) in weights[row.clone()].iter().zip(dy) {
+            *input_gradient += weight * output_gradient;
+        }
+        for (weight_gradient, &output_gradient) in dw[row].iter_mut().zip(dy) {
+            *weight_gradient += value * output_gradient;
         }
     }
 }
@@ -665,6 +670,39 @@ impl TinyTransformer {
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU64, Ordering};
+
+    #[test]
+    fn backward_kernel_preserves_scalar_accumulation_bits() {
+        for rows in [1, 3, 16] {
+            for cols in [1, 3, 16, 32, VOCAB_SIZE] {
+                let mut rng = Rng(42);
+                let mut values = |n| (0..n).map(|_| rng.symmetric(1.0)).collect::<Vec<_>>();
+                let x = values(rows);
+                let weights = values(rows * cols);
+                let dy = values(cols);
+                let mut dx = values(rows);
+                let mut dw = values(rows * cols);
+                let (mut expected_dx, mut expected_dw) = (dx.clone(), dw.clone());
+                for i in 0..rows {
+                    for j in 0..cols {
+                        expected_dx[i] += weights[i * cols + j] * dy[j];
+                        expected_dw[i * cols + j] += x[i] * dy[j];
+                    }
+                }
+                linear_backward(&x, &weights, &dy, &mut dx, &mut dw);
+                assert!(
+                    dx.iter()
+                        .zip(expected_dx)
+                        .all(|(a, b)| a.to_bits() == b.to_bits())
+                );
+                assert!(
+                    dw.iter()
+                        .zip(expected_dw)
+                        .all(|(a, b)| a.to_bits() == b.to_bits())
+                );
+            }
+        }
+    }
 
     fn config() -> ModelConfig {
         ModelConfig {
