@@ -215,7 +215,8 @@ fn prepare_baseline(revision: &str) -> Result<()> {
     if !files.status.success() {
         return Err("cannot list baseline revision".into());
     }
-    for file in String::from_utf8(files.stdout)?.lines() {
+    let files = String::from_utf8(files.stdout)?;
+    for file in files.lines() {
         let path = root.join(file);
         fs::create_dir_all(path.parent().ok_or("invalid baseline path")?)?;
         let data = Command::new("git")
@@ -225,6 +226,36 @@ fn prepare_baseline(revision: &str) -> Result<()> {
             return Err(format!("cannot read baseline file {file}").into());
         }
         fs::write(path, data.stdout)?;
+    }
+    let manifest = Command::new("cargo")
+        .args(["read-manifest", "--manifest-path"])
+        .arg(root.join("Cargo.toml"))
+        .output()?;
+    if !manifest.status.success() {
+        return Err("cannot read baseline package name".into());
+    }
+    let manifest: Value = serde_json::from_slice(&manifest.stdout)?;
+    let original_name = manifest["name"]
+        .as_str()
+        .ok_or("missing baseline package name")?;
+    let current_name = env!("CARGO_PKG_NAME");
+    if original_name != current_name {
+        // Match the current manifest/harness without changing baseline behavior.
+        let original_crate = original_name.replace('-', "_");
+        let current_crate = current_name.replace('-', "_");
+        for file in files.lines().filter(|file| file.ends_with(".rs")) {
+            let path = root.join(file);
+            let source = fs::read_to_string(&path)?
+                .replace(
+                    &format!("{original_crate}::"),
+                    &format!("{current_crate}::"),
+                )
+                .replace(
+                    &format!("CARGO_BIN_EXE_{original_name}"),
+                    &format!("CARGO_BIN_EXE_{current_name}"),
+                );
+            fs::write(path, source)?;
+        }
     }
     for file in ["Cargo.toml", "Cargo.lock", "benches/performance.rs"] {
         let path = root.join(file);
