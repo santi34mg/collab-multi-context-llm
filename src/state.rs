@@ -339,14 +339,20 @@ impl Engine {
     ) -> Result<RoundReport, String> {
         self.validate_actors(actions.iter().map(|(id, _)| *id))?;
         actions.sort_by_key(|(id, _)| *id);
-        let snapshot = self.clone();
-        let mut candidate = self.clone();
-        let next_round = candidate.round.checked_add(1).ok_or("round overflow")?;
+        let round = self.round;
+        let next_round = round.checked_add(1).ok_or("round overflow")?;
+        // Retain validation results from the old snapshot before any writes,
+        // rather than cloning growing histories, trace, and memory each round.
+        let validated: Vec<_> = actions
+            .into_iter()
+            .map(|(stream, operation)| {
+                let validation = self.validate_operation(stream, &operation);
+                (stream, operation, validation)
+            })
+            .collect();
         let mut outcomes = Vec::new();
-        for (stream, operation) in actions {
-            let result = snapshot
-                .validate_operation(stream, &operation)
-                .and_then(|()| candidate.apply_operation(stream, &operation));
+        for (stream, operation, validation) in validated {
+            let result = validation.and_then(|()| self.apply_operation(stream, &operation));
             let (accepted, detail) = match result {
                 Ok(detail) => (true, detail),
                 Err(e) => (false, e),
@@ -357,15 +363,11 @@ impl Engine {
                 accepted,
                 detail,
             };
-            candidate.record_outcome(snapshot.round, &outcome);
+            self.record_outcome(round, &outcome);
             outcomes.push(outcome);
         }
-        candidate.round = next_round;
-        *self = candidate;
-        Ok(RoundReport {
-            round: snapshot.round,
-            outcomes,
-        })
+        self.round = next_round;
+        Ok(RoundReport { round, outcomes })
     }
 
     /// A byte tokenizer makes the model vocabulary independent of dependencies.
@@ -374,19 +376,23 @@ impl Engine {
     pub fn step_tokens(&mut self, mut tokens: Vec<(StreamId, u8)>) -> Result<RoundReport, String> {
         self.validate_actors(tokens.iter().map(|(id, _)| *id))?;
         tokens.sort_by_key(|(id, _)| *id);
-        let mut candidate = self.clone();
-        let round = self.round;
-        let mut actions = Vec::new();
-        let mut malformed = Vec::new();
-        for (id, byte) in tokens {
-            let stream = candidate.streams.get_mut(&id).expect("validated actor");
-            if stream.history.len() >= self.config.max_history_bytes {
+        // All round-level failures must be checked before appending any bytes.
+        // Operation rejections below are outcomes, not transactional failures.
+        for &(id, _) in &tokens {
+            if self.streams[&id].history.len() >= self.config.max_history_bytes {
                 return Err(format!(
                     "stream {id} exhausted its generation-history budget"
                 ));
             }
+        }
+        self.round.checked_add(1).ok_or("round overflow")?;
+        let round = self.round;
+        let mut actions = Vec::new();
+        let mut malformed = Vec::new();
+        for (id, byte) in tokens {
+            let stream = self.streams.get_mut(&id).expect("validated actor");
             stream.history.push(byte);
-            candidate.trace.push(TraceEvent::Token {
+            self.trace.push(TraceEvent::Token {
                 round,
                 stream: id,
                 byte,
@@ -418,7 +424,7 @@ impl Engine {
         }
         // Appended bytes are not editable state and do not affect operation
         // authorization. step_actions still validates all operations together.
-        let mut report = candidate.step_actions(actions)?;
+        let mut report = self.step_actions(actions)?;
         for (stream, detail) in malformed {
             let outcome = ActionOutcome {
                 stream,
@@ -426,11 +432,10 @@ impl Engine {
                 accepted: false,
                 detail,
             };
-            candidate.record_outcome(round, &outcome);
+            self.record_outcome(round, &outcome);
             report.outcomes.push(outcome);
         }
         report.outcomes.sort_by_key(|outcome| outcome.stream);
-        *self = candidate;
         Ok(report)
     }
 
@@ -775,6 +780,10 @@ impl Engine {
         });
     }
 }
+
+#[cfg(test)]
+#[path = "state_performance_tests.rs"]
+mod performance_tests;
 
 #[cfg(test)]
 mod tests {
