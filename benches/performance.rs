@@ -1,13 +1,13 @@
 //! Criterion workloads and separately enabled allocation accounting.
 //! See docs/performance/REPORT.md.
-use agent_collab::context::{self, ContextBudget};
-use agent_collab::distillation::{self, TeacherSample};
-use agent_collab::experiments::small_config;
-use agent_collab::inference::{ChatMessage, GenerationConfig};
-use agent_collab::memory::{MemoryDraft, MemoryKind, MemoryStore};
-use agent_collab::model::TinyTransformer;
-use agent_collab::state::{Engine, EngineConfig, Operation};
-use agent_collab::training::{self, TrainingEpisode};
+use collab_multi_context_llm::context::{self, ContextBudget};
+use collab_multi_context_llm::distillation::{self, TeacherSample};
+use collab_multi_context_llm::experiments::small_config;
+use collab_multi_context_llm::inference::{ChatMessage, GenerationConfig};
+use collab_multi_context_llm::memory::{MemoryDraft, MemoryKind, MemoryStore};
+use collab_multi_context_llm::model::TinyTransformer;
+use collab_multi_context_llm::state::{Engine, EngineConfig, Operation};
+use collab_multi_context_llm::training::{self, TrainingEpisode};
 use criterion::{BatchSize, Criterion, SamplingMode, Throughput};
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::hint::black_box;

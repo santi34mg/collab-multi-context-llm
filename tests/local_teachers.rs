@@ -1,9 +1,9 @@
 //! Opt-in, bounded integration against the user's installed helper commands.
 //! No background process survives the test, including on assertion failure.
 
-use agent_collab::distillation::{self, DistillPrompt};
-use agent_collab::inference::http::HttpBackend;
-use agent_collab::inference::{ChatMessage, GenerationConfig};
+use collab_multi_context_llm::distillation::{self, DistillPrompt};
+use collab_multi_context_llm::inference::http::HttpBackend;
+use collab_multi_context_llm::inference::{ChatMessage, GenerationConfig};
 use std::fs::{self, File};
 use std::net::TcpListener;
 use std::path::PathBuf;
@@ -31,8 +31,10 @@ fn distills_verified_answers_from_installed_helpers() {
             .local_addr()
             .unwrap()
             .port();
-        let log =
-            std::env::temp_dir().join(format!("agent-collab-{command}-{}.log", std::process::id()));
+        let log = std::env::temp_dir().join(format!(
+            "collab-multi-context-llm-{command}-{}.log",
+            std::process::id()
+        ));
         let child = Command::new(command)
             .args([
                 "--host",

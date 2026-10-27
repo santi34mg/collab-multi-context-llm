@@ -1,5 +1,5 @@
-use agent_collab::memory::MemoryStore;
-use agent_collab::model::TinyTransformer;
+use collab_multi_context_llm::memory::MemoryStore;
+use collab_multi_context_llm::model::TinyTransformer;
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
@@ -12,7 +12,7 @@ struct TestDir(PathBuf);
 impl TestDir {
     fn new() -> Self {
         let dir = std::env::temp_dir().join(format!(
-            "agent-collab-cli-{}-{}",
+            "collab-multi-context-llm-cli-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
@@ -27,7 +27,7 @@ impl Drop for TestDir {
 }
 
 fn command() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_agent-collab"))
+    Command::new(env!("CARGO_BIN_EXE_collab-multi-context-llm"))
 }
 
 #[test]
@@ -35,6 +35,7 @@ fn help_and_invalid_arguments_have_correct_status() {
     let help = command().arg("--help").output().unwrap();
     assert!(help.status.success());
     assert!(String::from_utf8_lossy(&help.stdout).contains("train-trace"));
+    assert!(String::from_utf8_lossy(&help.stdout).contains("collab-multi-context-llm demo"));
     assert!(!command().arg("unknown").output().unwrap().status.success());
     assert!(
         !command()
@@ -81,7 +82,7 @@ fn inference_emits_parallel_tokens_and_does_not_save_unfinished_memory() {
     let checkpoint = dir.0.join("model.json");
     let episode = dir.0.join("episode.json");
     let memory = dir.0.join("memory.json");
-    TinyTransformer::new(agent_collab::experiments::small_config(), 7)
+    TinyTransformer::new(collab_multi_context_llm::experiments::small_config(), 7)
         .unwrap()
         .save(&checkpoint)
         .unwrap();

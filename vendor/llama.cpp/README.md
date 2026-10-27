@@ -79,8 +79,8 @@ sandbox.
 
 ```rust,ignore
 use std::path::PathBuf;
-use agent_collab::inference::{ChatMessage, GenerationConfig, InferenceBackend};
-use agent_collab::inference::native::{NativeConfig, NativeModel};
+use collab_multi_context_llm::inference::{ChatMessage, GenerationConfig, InferenceBackend};
+use collab_multi_context_llm::inference::native::{NativeConfig, NativeModel};
 
 let mut model = NativeModel::load(NativeConfig {
     model: PathBuf::from("/path/to/model.gguf"),

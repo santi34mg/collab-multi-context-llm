@@ -1,6 +1,6 @@
-use agent_collab::context::{self, ContextBudget, SHARED};
-use agent_collab::experiments::{self, published_bits};
-use agent_collab::model::TinyTransformer;
+use collab_multi_context_llm::context::{self, ContextBudget, SHARED};
+use collab_multi_context_llm::experiments::{self, published_bits};
+use collab_multi_context_llm::model::TinyTransformer;
 
 #[test]
 #[ignore = "12,000 SGD steps: run cargo test --release --test learning -- --ignored"]

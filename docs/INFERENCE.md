@@ -29,14 +29,14 @@ Without `native`, all ordinary student training and the local HTTP client still 
 
 ```sh
 # The aliases resolve the existing files under HOME/.local/share/local-models.
-./target/release/agent-collab infer --preset qwen -p 'What is 2 + 2? Reply with only the digit.' -n 64 --temp 0 --json
-./target/release/agent-collab infer --preset lfm -p 'What is 2 + 2? Reply with only the digit.' -n 256 --temp 0
+./target/release/collab-multi-context-llm infer --preset qwen -p 'What is 2 + 2? Reply with only the digit.' -n 64 --temp 0 --json
+./target/release/collab-multi-context-llm infer --preset lfm -p 'What is 2 + 2? Reply with only the digit.' -n 256 --temp 0
 
 # Or select any compatible GGUF explicitly.
-./target/release/agent-collab infer -m /path/to/model.gguf -p 'Explain persistent memory in one sentence.' -n 256
+./target/release/collab-multi-context-llm infer -m /path/to/model.gguf -p 'Explain persistent memory in one sentence.' -n 256
 
 # Raw completion bypasses chat formatting and final-answer extraction.
-./target/release/agent-collab infer -m /path/to/model.gguf --raw -p 'The capital of France is' -n 32
+./target/release/collab-multi-context-llm infer -m /path/to/model.gguf --raw -p 'The capital of France is' -n 32
 ```
 
 Common options:
@@ -71,7 +71,7 @@ Unknown GGUF templates do not receive guessed model-specific formatting. The bac
 ## Run this repository's inference server
 
 ```sh
-./target/release/agent-collab serve --preset qwen --alias qwen3.5-4b --port 8082
+./target/release/collab-multi-context-llm serve --preset qwen --alias qwen3.5-4b --port 8082
 ```
 
 The Rust service owns the loaded native model and exposes:
@@ -109,8 +109,8 @@ Prompts are a JSON array of `{id, messages, expected_answer?}`. See [the example
 Run sequentially so only one large teacher is loaded at a time:
 
 ```sh
-./target/release/agent-collab distill --preset qwen --input examples/distillation-prompts.json --output target/qwen.jsonl -n 256 --ctx-size 1024 --temp 0
-./target/release/agent-collab distill --preset lfm --input examples/distillation-prompts.json --output target/lfm.jsonl -n 512 --ctx-size 1024 --temp 0
+./target/release/collab-multi-context-llm distill --preset qwen --input examples/distillation-prompts.json --output target/qwen.jsonl -n 256 --ctx-size 1024 --temp 0
+./target/release/collab-multi-context-llm distill --preset lfm --input examples/distillation-prompts.json --output target/lfm.jsonl -n 512 --ctx-size 1024 --temp 0
 ```
 
 ### Existing HTTP teachers

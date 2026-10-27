@@ -1,9 +1,9 @@
-use agent_collab::context::{self, ContextBudget};
-use agent_collab::experiments;
-use agent_collab::memory::{MemoryKind, MemoryStore};
-use agent_collab::model::TinyTransformer;
-use agent_collab::state::{Engine, EngineConfig, Operation, RoundReport, StreamId};
-use agent_collab::training::{self, TrainingEpisode};
+use collab_multi_context_llm::context::{self, ContextBudget};
+use collab_multi_context_llm::experiments;
+use collab_multi_context_llm::memory::{MemoryKind, MemoryStore};
+use collab_multi_context_llm::model::TinyTransformer;
+use collab_multi_context_llm::state::{Engine, EngineConfig, Operation, RoundReport, StreamId};
+use collab_multi_context_llm::training::{self, TrainingEpisode};
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
@@ -11,23 +11,23 @@ use std::path::Path;
 const HELP: &str = "Collaborative multi-context research prototype (CPU Rust)
 
 Usage:
-  agent-collab demo [MEMORY_FILE] [TRACE_FILE]
+  collab-multi-context-llm demo [MEMORY_FILE] [TRACE_FILE]
       Scripted collaboration through the byte protocol, durable memory, restart.
-  agent-collab train [STEPS=12000] [CHECKPOINT=checkpoint.json]
+  collab-multi-context-llm train [STEPS=12000] [CHECKPOINT=checkpoint.json]
       Train a tiny transformer to read the other stream's published A/B bit.
-  agent-collab train-trace DATASET EPOCHS [CHECKPOINT=checkpoint.json] [INITIAL_CHECKPOINT]
+  collab-multi-context-llm train-trace DATASET EPOCHS [CHECKPOINT=checkpoint.json] [INITIAL_CHECKPOINT]
       Supervise operation generation on a JSON array of TrainingEpisode objects.
-  agent-collab run CHECKPOINT EPISODE [ROUNDS=256] [MEMORY_FILE]
+  collab-multi-context-llm run CHECKPOINT EPISODE [ROUNDS=256] [MEMORY_FILE]
       Free-run a learned model; EPISODE is one TrainingEpisode object.
       Demonstration rounds are ignored. Prints JSON trace to standard output.
       Optional memory file is loaded and saved after a completed task.
 
 Local pretrained inference and distillation:
-  agent-collab infer --preset qwen|lfm -p PROMPT
-  agent-collab serve -m MODEL.gguf [--port 8080]
-  agent-collab distill --preset qwen|lfm --input PROMPTS.json --output SAMPLES.jsonl
-  agent-collab train-distill --input SAMPLES.jsonl --epochs N --output STUDENT.json
-  agent-collab student --checkpoint STUDENT.json -p PROMPT
+  collab-multi-context-llm infer --preset qwen|lfm -p PROMPT
+  collab-multi-context-llm serve -m MODEL.gguf [--port 8080]
+  collab-multi-context-llm distill --preset qwen|lfm --input PROMPTS.json --output SAMPLES.jsonl
+  collab-multi-context-llm train-distill --input SAMPLES.jsonl --epochs N --output STUDENT.json
+  collab-multi-context-llm student --checkpoint STUDENT.json -p PROMPT
   Use COMMAND --help for native setup and options.
 
 The demo is scripted, not a pretrained agent. The bit experiment is an in-sample
@@ -49,7 +49,7 @@ fn run() -> Result<(), String> {
             Ok(())
         }
         Some("infer" | "serve" | "distill" | "train-distill" | "student") => {
-            agent_collab::commands::run(&args)
+            collab_multi_context_llm::commands::run(&args)
         }
         Some("demo") if args.len() <= 3 => demo(
             args.get(1).map_or("memory.json", String::as_str),

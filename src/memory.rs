@@ -26,6 +26,7 @@ use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+// Keep the persisted format identifier stable across project renames.
 const FILE_FORMAT: &str = "agent-collab-memory";
 const FILE_VERSION: u32 = 1;
 static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
@@ -427,7 +428,7 @@ fn create_temporary(parent: &Path, destination: &Path) -> Result<(TemporaryPath,
     for _ in 0..128 {
         let sequence = TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed);
         let path = parent.join(format!(
-            ".agent-collab-memory-{}-{sequence}.tmp",
+            ".collab-multi-context-llm-memory-{}-{sequence}.tmp",
             std::process::id()
         ));
         if path.file_name() == destination.file_name() {
@@ -464,7 +465,7 @@ mod tests {
             for _ in 0..128 {
                 let sequence = TEST_SEQUENCE.fetch_add(1, Ordering::Relaxed);
                 let path = std::env::temp_dir().join(format!(
-                    "agent-collab-memory-tests-{}-{sequence}",
+                    "collab-multi-context-llm-memory-tests-{}-{sequence}",
                     std::process::id()
                 ));
                 match fs::create_dir(&path) {
@@ -498,6 +499,24 @@ mod tests {
 
     fn ids(entries: Vec<MemoryEntry>) -> Vec<u64> {
         entries.into_iter().map(|entry| entry.id).collect()
+    }
+
+    #[test]
+    fn saved_memory_remains_compatible_after_project_rename() {
+        let snapshot: Snapshot = serde_json::from_str(
+            r#"{
+            "format": "agent-collab-memory", "format_version": 1,
+            "max_bytes": 128, "next_id": 2,
+            "entries": [{
+                "id": 1, "version": 1, "content": "kept", "kind": "fact",
+                "scope": "scope", "source_references": ["observation:1"],
+                "status": "active"
+            }]
+        }"#,
+        )
+        .unwrap();
+        let store = MemoryStore::from_snapshot(snapshot).unwrap();
+        assert_eq!(store.active("scope")[0].content, "kept");
     }
 
     #[test]
@@ -770,7 +789,7 @@ mod tests {
         let directory = TestDirectory::new();
         let sequence = TEMP_SEQUENCE.load(Ordering::Relaxed);
         let destination = directory.0.join(format!(
-            ".agent-collab-memory-{}-{sequence}.tmp",
+            ".collab-multi-context-llm-memory-{}-{sequence}.tmp",
             std::process::id()
         ));
         let (temporary, file) = create_temporary(&directory.0, &destination).unwrap();
@@ -792,7 +811,7 @@ mod tests {
 
         let sequence = TEMP_SEQUENCE.load(Ordering::Relaxed);
         let existing = directory.0.join(format!(
-            ".agent-collab-memory-{}-{sequence}.tmp",
+            ".collab-multi-context-llm-memory-{}-{sequence}.tmp",
             std::process::id()
         ));
         fs::write(&existing, b"leftover content").unwrap();

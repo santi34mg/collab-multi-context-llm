@@ -1014,7 +1014,7 @@ mod tests {
     fn checkpoint_path() -> std::path::PathBuf {
         static NEXT: AtomicU64 = AtomicU64::new(0);
         std::env::temp_dir().join(format!(
-            "agent-collab-model-{}-{}.json",
+            "collab-multi-context-llm-model-{}-{}.json",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed),
         ))

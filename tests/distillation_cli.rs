@@ -1,5 +1,7 @@
-use agent_collab::inference::{ChatMessage, Generation, GenerationConfig, InferenceBackend};
-use agent_collab::{distillation, model::TinyTransformer};
+use collab_multi_context_llm::inference::{
+    ChatMessage, Generation, GenerationConfig, InferenceBackend,
+};
+use collab_multi_context_llm::{distillation, model::TinyTransformer};
 use std::fs;
 use std::net::TcpListener;
 use std::path::PathBuf;
@@ -25,7 +27,7 @@ impl Drop for TestDir {
     }
 }
 fn command() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_agent-collab"))
+    Command::new(env!("CARGO_BIN_EXE_collab-multi-context-llm"))
 }
 fn success(output: &Output) {
     assert!(
@@ -63,7 +65,8 @@ fn collection_training_and_collaboration_warm_start_work_end_to_end() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
     let server = std::thread::spawn(move || {
-        agent_collab::inference::http::serve_listener(&mut Teacher, listener, Some(2)).unwrap()
+        collab_multi_context_llm::inference::http::serve_listener(&mut Teacher, listener, Some(2))
+            .unwrap()
     });
     let collected = command()
         .args(["distill", "--endpoint", &endpoint, "--input"])

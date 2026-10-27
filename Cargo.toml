@@ -1,5 +1,5 @@
 [package]
-name = "agent-collab"
+name = "collab-multi-context-llm"
 version = "0.1.0"
 edition = "2024"
 description = "Collaborative multi-context language models with native GGUF inference and local teacher distillation"
